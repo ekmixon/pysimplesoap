@@ -11,20 +11,27 @@ if __name__ == "__main__":
     if '--web2py' in sys.argv:
         # test local sample webservice exposed by web2py
         from client import SoapClient
-        if not '--wsdl' in sys.argv:
-            client = SoapClient(
+        client = (
+            SoapClient(
+                wsdl="http://127.0.0.1:8000/webservices/sample/call/soap?WSDL"
+            )
+            if '--wsdl' in sys.argv
+            else SoapClient(
                 location="http://127.0.0.1:8000/webservices/sample/call/soap",
                 action='http://127.0.0.1:8000/webservices/sample/call/soap',  # SOAPAction
                 namespace="http://127.0.0.1:8000/webservices/sample/call/soap",
-                soap_ns='soap', ns=False, exceptions=True)
-        else:
-            client = SoapClient(wsdl="http://127.0.0.1:8000/webservices/sample/call/soap?WSDL")
+                soap_ns='soap',
+                ns=False,
+                exceptions=True,
+            )
+        )
+
         response = client.Dummy()
         print('dummy', response)
         response = client.Echo(value='hola')
         print('echo', repr(response))
         response = client.AddIntegers(a=1, b=2)
-        if not '--wsdl' in sys.argv:
+        if '--wsdl' not in sys.argv:
             result = response.AddResult  # manully convert returned type
             print(int(result))
         else:
@@ -53,9 +60,9 @@ if __name__ == "__main__":
             ns=True)
         response = client.dummy()
         result = response.dummyResponse
-        print(str(result.appserver))
-        print(str(result.dbserver))
-        print(str(result.authserver))
+        print(result.appserver)
+        print(result.dbserver)
+        print(result.authserver)
 
     if '--wsfe' in sys.argv:
         # Demo & Test (AFIP Electronic Invoice):
@@ -74,8 +81,8 @@ if __name__ == "__main__":
             argAuth={"Token": token, "Sign": sign, "cuit": long(cuit)}
         )
         if int(results.FERecuperaQTYRequestResult.RError.percode) != 0:
-            print("Percode: %s" % results.FERecuperaQTYRequestResult.RError.percode)
-            print("MSGerror: %s" % results.FERecuperaQTYRequestResult.RError.perrmsg)
+            print(f"Percode: {results.FERecuperaQTYRequestResult.RError.percode}")
+            print(f"MSGerror: {results.FERecuperaQTYRequestResult.RError.perrmsg}")
         else:
             print(int(results.FERecuperaQTYRequestResult.qty.value))
 
@@ -93,10 +100,7 @@ if __name__ == "__main__":
         print(feriadosXML)
 
     if '--wsdl-parse' in sys.argv:
-        if '--proxy' in sys.argv:
-            proxy = parse_proxy("localhost:8000")
-        else:
-            proxy = None
+        proxy = parse_proxy("localhost:8000") if '--proxy' in sys.argv else None
         if '--wrapper' in sys.argv:
             set_http_wrapper("pycurl")
         client = SoapClient(proxy=proxy)
@@ -196,7 +200,7 @@ if __name__ == "__main__":
                     t1 = time.time()
                     result = t1 - t0
                 except Exception as e:
-                    result = "Failed: %s" % e
+                    result = f"Failed: {e}"
                 print("Total time", result)
                 results.setdefault(lib, {})[proxy and 'proxy' or 'direct'] = result
         print("\nResults:")

@@ -116,14 +116,14 @@ class SoapDispatcher(object):
         if ns:
             _tpl = 'xmlns:%s="%s"'
             _ns_str = " ".join([_tpl % (prefix, uri) for uri, prefix in ns.items() if uri not in xml])
-            xml = xml.replace('/>', ' ' + _ns_str + '/>')
+            xml = xml.replace('/>', f' {_ns_str}/>')
         return xml
 
     def register_function(self, name, fn, returns=None, args=None, doc=None):
         self.methods[name] = fn, returns, args, doc or getattr(fn, "__doc__", "")
 
     def response_element_name(self, method):
-        return '%sResponse' % method
+        return f'{method}Response'
 
     def dispatch(self, xml, action=None, fault=None):
         """Receive and process SOAP call, returns the xml"""
@@ -138,7 +138,7 @@ class SoapDispatcher(object):
         name = None
 
         # namespaces = [('model', 'http://model.common.mt.moboperator'), ('external', 'http://external.mt.moboperator')]
-        _ns_reversed = dict(((v, k) for k, v in self.namespaces.items()))  # Switch keys-values
+        _ns_reversed = {v: k for k, v in self.namespaces.items()}
         # _ns_reversed = {'http://external.mt.moboperator': 'external', 'http://model.common.mt.moboperator': 'model'}
 
         try:
@@ -196,11 +196,14 @@ class SoapDispatcher(object):
             log.debug('dispathed method returns: %s', ret)
 
         except SoapFault as e:
-            fault.update({
-                'faultcode': "%s.%s" % (soap_fault_code, e.faultcode),
-                'faultstring': e.faultstring,
-                'detail': e.detail
-            })
+            fault.update(
+                {
+                    'faultcode': f"{soap_fault_code}.{e.faultcode}",
+                    'faultstring': e.faultstring,
+                    'detail': e.detail,
+                }
+            )
+
 
         except Exception:  # This shouldn't be one huge try/except
             import sys
@@ -211,16 +214,22 @@ class SoapDispatcher(object):
                 detail += u'\n\nXML REQUEST\n\n' + xml.decode('UTF-8')
             else:
                 detail = None
-            fault.update({'faultcode': "%s.%s" % (soap_fault_code, etype.__name__),
-                     'faultstring': evalue,
-                     'detail': detail})
+            fault.update(
+                {
+                    'faultcode': f"{soap_fault_code}.{etype.__name__}",
+                    'faultstring': evalue,
+                    'detail': detail,
+                }
+            )
+
 
         # build response message
-        if not prefix:
-            xml = """<%(soap_ns)s:Envelope xmlns:%(soap_ns)s="%(soap_uri)s"/>"""
-        else:
-            xml = """<%(soap_ns)s:Envelope xmlns:%(soap_ns)s="%(soap_uri)s"
+        xml = (
+            """<%(soap_ns)s:Envelope xmlns:%(soap_ns)s="%(soap_uri)s"
                        xmlns:%(prefix)s="%(namespace)s"/>"""
+            if prefix
+            else """<%(soap_ns)s:Envelope xmlns:%(soap_ns)s="%(soap_uri)s"/>"""
+        )
 
         xml %= {    # a %= {} is a shortcut for a = a % {}
             'namespace': self.namespace,
@@ -235,7 +244,7 @@ class SoapDispatcher(object):
         # Change our namespace alias to that given by the client.
         # We put [('model', 'http://model.common.mt.moboperator'), ('external', 'http://external.mt.moboperator')]
         # mix it with {'http://external.mt.moboperator': 'ext', 'http://model.common.mt.moboperator': 'mod'}
-        mapping = dict(((k, _ns_reversed[v]) for k, v in self.namespaces.items()))  # Switch keys-values and change value
+        mapping = {k: _ns_reversed[v] for k, v in self.namespaces.items()}
         # and get {'model': u'mod', 'external': u'ext'}
 
         response = SimpleXMLElement(xml,
@@ -246,11 +255,11 @@ class SoapDispatcher(object):
         response['xmlns:xsi'] = "http://www.w3.org/2001/XMLSchema-instance"
         response['xmlns:xsd'] = "http://www.w3.org/2001/XMLSchema"
 
-        body = response.add_child("%s:Body" % soap_ns, ns=False)
+        body = response.add_child(f"{soap_ns}:Body", ns=False)
 
         if fault:
             # generate a Soap Fault (with the python exception)
-            body.marshall("%s:Fault" % soap_ns, fault, ns=False)
+            body.marshall(f"{soap_ns}:Fault", fault, ns=False)
         else:
             # return normal value
             res = body.add_child(self.response_element_name(name), ns=self.namespace)
@@ -263,7 +272,7 @@ class SoapDispatcher(object):
                 complex_type = isinstance(ret, dict)
                 if complex_type:
                     # check if type mapping correlates with return value
-                    types_ok = all([k in returns_types for k in ret.keys()])
+                    types_ok = all(k in returns_types for k in ret.keys())
                     if not types_ok:
                         warnings.warn("Return value doesn't match type structure: "
                                      "%s vs %s" % (str(returns_types), str(ret)))
@@ -317,7 +326,7 @@ class SoapDispatcher(object):
         else:
             items = []
         for k, v in items:
-            response('%sResponse' % method).marshall(k, v, add_comments=True, ns=False)
+            response(f'{method}Response').marshall(k, v, add_comments=True, ns=False)
 
         return request.as_xml(pretty=True), response.as_xml(pretty=True), doc
 
@@ -370,52 +379,51 @@ class SoapDispatcher(object):
                     if array:
                         e[:] = {'minOccurs': "0", 'maxOccurs': "unbounded"}
                     if v in TYPE_MAP.keys():
-                        t = 'xsd:%s' % TYPE_MAP[v]
+                        t = f'xsd:{TYPE_MAP[v]}'
                     elif v is None:
                         t = 'xsd:anyType'
                     elif isinstance(v, list):
-                        n = "ArrayOf%s%s" % (name, k)
+                        n = f"ArrayOf{name}{k}"
                         l = []
                         for d in v:
                             l.extend(d.items())
                         parse_element(n, l, array=True, complex=True)
-                        t = "tns:%s" % n
+                        t = f"tns:{n}"
                     elif isinstance(v, dict):
-                        n = "%s%s" % (name, k)
+                        n = f"{name}{k}"
                         parse_element(n, v.items(), complex=True)
-                        t = "tns:%s" % n
+                        t = f"tns:{n}"
                     else:
-                        raise TypeError("unknonw type %s for marshalling" % str(v))
+                        raise TypeError(f"unknonw type {str(v)} for marshalling")
                     e.add_attribute('type', t)
 
-            parse_element("%s" % method, args and args.items())
-            parse_element("%sResponse" % method, returns and returns.items())
+            parse_element(f"{method}", args and args.items())
+            parse_element(f"{method}Response", returns and returns.items())
 
             # create messages:
             for m, e in ('Input', ''), ('Output', 'Response'):
                 message = wsdl.add_child('wsdl:message')
-                message['name'] = "%s%s" % (method, m)
+                message['name'] = f"{method}{m}"
                 part = message.add_child("wsdl:part")
-                part[:] = {'name': 'parameters',
-                           'element': 'tns:%s%s' % (method, e)}
+                part[:] = {'name': 'parameters', 'element': f'tns:{method}{e}'}
 
         # create ports
         portType = wsdl.add_child('wsdl:portType')
-        portType['name'] = "%sPortType" % self.name
+        portType['name'] = f"{self.name}PortType"
         for method, (function, returns, args, doc) in self.methods.items():
             op = portType.add_child('wsdl:operation')
             op['name'] = method
             if doc:
                 op.add_child("wsdl:documentation", doc)
             input = op.add_child("wsdl:input")
-            input['message'] = "tns:%sInput" % method
+            input['message'] = f"tns:{method}Input"
             output = op.add_child("wsdl:output")
-            output['message'] = "tns:%sOutput" % method
+            output['message'] = f"tns:{method}Output"
 
         # create bindings
         binding = wsdl.add_child('wsdl:binding')
-        binding['name'] = "%sBinding" % self.name
-        binding['type'] = "tns:%sPortType" % self.name
+        binding['name'] = f"{self.name}Binding"
+        binding['type'] = f"tns:{self.name}PortType"
         soapbinding = binding.add_child('soap:binding')
         soapbinding['style'] = "document"
         soapbinding['transport'] = "http://schemas.xmlsoap.org/soap/http"
@@ -435,11 +443,11 @@ class SoapDispatcher(object):
             soapbody["use"] = "literal"
 
         service = wsdl.add_child('wsdl:service')
-        service["name"] = "%sService" % self.name
+        service["name"] = f"{self.name}Service"
         service.add_child('wsdl:documentation', text=self.documentation)
         port = service.add_child('wsdl:port')
-        port["name"] = "%s" % self.name
-        port["binding"] = "tns:%sBinding" % self.name
+        port["name"] = f"{self.name}"
+        port["binding"] = f"tns:{self.name}Binding"
         soapaddress = port.add_child('soap:address')
         soapaddress["location"] = self.location
         return wsdl.as_xml(pretty=True)
@@ -451,7 +459,7 @@ class SOAPHandler(BaseHTTPRequestHandler):
         """User viewable help information and wsdl"""
         args = self.path[1:].split("?")
         if self.path != "/" and args[0] not in self.server.dispatcher.methods.keys():
-            self.send_error(404, "Method not found: %s" % args[0])
+            self.send_error(404, f"Method not found: {args[0]}")
         else:
             if self.path == "/":
                 # return wsdl if no method supplied
@@ -459,10 +467,7 @@ class SOAPHandler(BaseHTTPRequestHandler):
             else:
                 # return supplied method help (?request or ?response messages)
                 req, res, doc = self.server.dispatcher.help(args[0])
-                if len(args) == 1 or args[1] == "request":
-                    response = req
-                else:
-                    response = res
+                response = req if len(args) == 1 or args[1] == "request" else res
             self.send_response(200)
             self.send_header("Content-type", "text/xml")
             self.end_headers()
@@ -512,17 +517,14 @@ class WSGISOAPHandler(object):
         query = environ.get('QUERY_STRING')
         if path != "" and path not in self.dispatcher.methods.keys():
             start_response('404 Not Found', [('Content-Type', 'text/plain')])
-            return ["Method not found: %s" % path]
+            return [f"Method not found: {path}"]
         elif path == "":
             # return wsdl if no method supplied
             response = self.dispatcher.wsdl()
         else:
             # return supplied method help (?request or ?response messages)
             req, res, doc = self.dispatcher.help(path)
-            if len(query) == 0 or query == "request":
-                response = req
-            else:
-                response = res
+            response = req if len(query) == 0 or query == "request" else res
         start_response('200 OK', [('Content-Type', 'text/xml'), ('Content-Length', str(len(response)))])
         return [response]
 

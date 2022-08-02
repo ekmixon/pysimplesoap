@@ -315,11 +315,11 @@ class TestIssues(unittest.TestCase):
             #open("issue78.xml", "wb").write(client.xml_request)
             #print(client.xml_request)
             header = '<soap:Header>' \
-                         '<qmw:Security xmlns:qmw="http://questionmark.com/QMWISe/">' \
-                             '<qmw:ClientID>NAME</qmw:ClientID>' \
-                             '<qmw:Checksum>PASSWORD</qmw:Checksum>' \
-                         '</qmw:Security>' \
-                     '</soap:Header>'
+                             '<qmw:Security xmlns:qmw="http://questionmark.com/QMWISe/">' \
+                                 '<qmw:ClientID>NAME</qmw:ClientID>' \
+                                 '<qmw:Checksum>PASSWORD</qmw:Checksum>' \
+                             '</qmw:Security>' \
+                         '</soap:Header>'
             xml = SimpleXMLElement(client.xml_request)
             self.assertEquals(str(xml.ClientID), "NAME")
             self.assertEquals(str(xml.Checksum), "PASSWORD")

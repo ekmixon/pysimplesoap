@@ -91,7 +91,7 @@ else:
             if proxy:
                 import socks
                 kwargs['proxy_info'] = httplib2.ProxyInfo(proxy_type=socks.PROXY_TYPE_HTTP, **proxy)
-                log.info("using proxy %s" % proxy)
+                log.info(f"using proxy {proxy}")
 
             # set optional parameters according to supported httplib2 version
             if LooseVersion(httplib2.__version__) >= LooseVersion('0.3.0'):
@@ -124,7 +124,7 @@ class urllib2Transport(TransportBase):
             raise RuntimeError('proxy is not supported with urllib2 transport')
         if cacert:
             raise RuntimeError('cacert is not support with urllib2 transport')
-        
+
         handlers = []
 
         if ((sys.version_info[0] == 2 and sys.version_info >= (2,7,9)) or
@@ -133,10 +133,10 @@ class urllib2Transport(TransportBase):
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
             handlers.append(urllib2.HTTPSHandler(context=context))
-        
+
         if sessions:
             handlers.append(urllib2.HTTPCookieProcessor(CookieJar()))
-        
+
         opener = urllib2.build_opener(*handlers)
         self.request_opener = opener.open
         self._timeout = timeout
@@ -207,7 +207,7 @@ else:
                 c.setopt(pycurl.POST, 1)
                 c.setopt(pycurl.POSTFIELDS, body)
             if headers:
-                hdrs = ['%s: %s' % (k, v) for k, v in headers.items()]
+                hdrs = [f'{k}: {v}' for k, v in headers.items()]
                 log.debug(hdrs)
                 c.setopt(pycurl.HTTPHEADER, hdrs)
             c.perform()
@@ -239,7 +239,7 @@ def get_http_wrapper(library=None, features=[]):
         try:
             return _http_connectors[library]
         except KeyError:
-            raise RuntimeError('%s transport is not available' % (library,))
+            raise RuntimeError(f'{library} transport is not available')
 
     # If we haven't been asked for a specific feature either, then just return our favourite
     # implementation.
@@ -261,7 +261,10 @@ def get_http_wrapper(library=None, features=[]):
     try:
         candidate_name = current_candidates[0]
     except IndexError:
-        raise RuntimeError("no transport available which supports these features: %s" % (features,))
+        raise RuntimeError(
+            f"no transport available which supports these features: {features}"
+        )
+
     else:
         return _http_connectors[candidate_name]
 

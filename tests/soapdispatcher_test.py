@@ -26,7 +26,7 @@ def echo(request):
 class TestSoapDispatcher(unittest.TestCase):
     def eq(self, value, expectation, msg=None):
         if msg is not None:
-            msg += ' %s' % value
+            msg += f' {value}'
             self.assertEqual(value, expectation, msg)
         else:
             self.assertEqual(value, expectation, "%s\n---\n%s" % (value, expectation))

@@ -109,7 +109,7 @@ def call_wsaa(cms, wsdl=WSDL, proxy=None, cache=None, wrapper="", trace=False):
     ##location = ws['ports']['WsaaServerBeanPort']['location']
     ##location = location.replace("192.4.1.39:8180", "secure.aduana.gov.py")
     ##ws['ports']['WsaaServerBeanPort']['location'] = wsdl[:-5] #location
-    
+
     # call the remote method
     try:
         results = client.loginCms(arg0=str(cms))
@@ -118,10 +118,8 @@ def call_wsaa(cms, wsdl=WSDL, proxy=None, cache=None, wrapper="", trace=False):
         open("request.xml", "w").write(client.xml_request)
         open("response.xml", "w").write(client.xml_response)
         raise
-    
-    # extract the result:
-    ta = results['return'].encode("utf-8")
-    return ta
+
+    return results['return'].encode("utf-8")
 
 
 if __name__=="__main__":

@@ -94,7 +94,7 @@ class UsernameDigestToken(UsernameToken):
         usertoken = wsse.add_child('wsse:UsernameToken', ns=False)
         usertoken.add_child('wsse:Username', self.username, ns=False)
 
-        created = (datetime.datetime.utcnow() + self.drift).isoformat() + 'Z'
+        created = f'{(datetime.datetime.utcnow() + self.drift).isoformat()}Z'
         usertoken.add_child('wsu:Created', created, ns=False)
 
         nonce = randombytes(16)
@@ -184,11 +184,19 @@ class BinaryTokenSignature:
         signed_info = signature("SignedInfo", ns=XMLDSIG_URI)
         signature_value = signature("SignatureValue", ns=XMLDSIG_URI)
         # TODO: these sanity checks should be moved to xmlsec?
-        self.__check(signed_info("Reference", ns=XMLDSIG_URI)['URI'], "#" + ref_uri)
-        self.__check(signed_info("SignatureMethod", ns=XMLDSIG_URI)['Algorithm'], 
-                     XMLDSIG_URI + "rsa-sha1")
-        self.__check(signed_info("Reference", ns=XMLDSIG_URI)("DigestMethod", ns=XMLDSIG_URI)['Algorithm'], 
-                     XMLDSIG_URI + "sha1")
+        self.__check(signed_info("Reference", ns=XMLDSIG_URI)['URI'], f"#{ref_uri}")
+        self.__check(
+            signed_info("SignatureMethod", ns=XMLDSIG_URI)['Algorithm'],
+            f"{XMLDSIG_URI}rsa-sha1",
+        )
+
+        self.__check(
+            signed_info("Reference", ns=XMLDSIG_URI)(
+                "DigestMethod", ns=XMLDSIG_URI
+            )['Algorithm'],
+            f"{XMLDSIG_URI}sha1",
+        )
+
         # TODO: check KeyInfo uses the correct SecurityTokenReference
         # workaround: copy namespaces so lxml can parse the xml to be signed
         for attr, value in response[:]:

@@ -178,13 +178,12 @@ def x509_parse_cert(cert, binary=False):
     "Create a X509 certificate from binary DER, plain text PEM or filename"
     if binary:
         bio = BIO.MemoryBuffer(cert)
-        x509 = X509.load_cert_bio(bio, X509.FORMAT_DER)
+        return X509.load_cert_bio(bio, X509.FORMAT_DER)
     elif cert.startswith("-----BEGIN CERTIFICATE-----"):
         bio = BIO.MemoryBuffer(cert)
-        x509 = X509.load_cert_bio(bio, X509.FORMAT_PEM)
+        return X509.load_cert_bio(bio, X509.FORMAT_PEM)
     else:
-        x509 = X509.load_cert(cert, 1)
-    return x509
+        return X509.load_cert(cert, 1)
 
 
 def x509_extract_rsa_public_key(cert, binary=False):

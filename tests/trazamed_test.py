@@ -51,20 +51,10 @@ class TestTrazamed(unittest.TestCase):
         # fix location (localhost:9050 is erroneous in the WSDL)
         self.client.services['IWebServiceService']['ports']['IWebServicePort']['location'] = LOCATION
 
-        # Set WSSE security credentials
-        if False:
-            # deprecated, do not use in new code! (just for testing)
-            self.client['wsse:Security'] = {
-                    'wsse:UsernameToken': {
-                        'wsse:Username': "testwservice",
-                        'wsse:Password': "testwservicepsw",
-                        }
-                    }
-        else:
-            # new recommended style using plugins
-            wsse_token = UsernameToken(username='testwservice', 
-                                       password='testwservicepsw')
-            self.client.plugins.append(wsse_token)
+        # new recommended style using plugins
+        wsse_token = UsernameToken(username='testwservice', 
+                                   password='testwservicepsw')
+        self.client.plugins.append(wsse_token)
 
     def test_send_medicamentos(self):
         #self.client.help("sendMedicamentos")

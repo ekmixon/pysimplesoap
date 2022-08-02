@@ -43,67 +43,64 @@ def fetch(url, http, cache=False, force_download=False, wsdl_basedir='', headers
 
     # check / append a valid schema if not given:
     url_scheme, netloc, path, query, fragment = urlsplit(url)
-    if not url_scheme in ('http', 'https', 'file'):
+    if url_scheme not in ('http', 'https', 'file'):
         for scheme in ('http', 'https', 'file'):
             try:
                 path = os.path.normpath(os.path.join(wsdl_basedir, url))
                 if not url.startswith("/") and scheme in ('http', 'https'):
-                    tmp_url = "%s://%s" % (scheme, path)
+                    tmp_url = f"{scheme}://{path}"
                 else:
-                    tmp_url = "%s:%s" % (scheme, path)
-                log.debug('Scheme not found, trying %s' % scheme)
+                    tmp_url = f"{scheme}:{path}"
+                log.debug(f'Scheme not found, trying {scheme}')
                 return fetch(tmp_url, http, cache, force_download, wsdl_basedir, headers)
             except Exception as e:
                 log.error(e)
-        raise RuntimeError('No scheme given for url: %s' % url)
+        raise RuntimeError(f'No scheme given for url: {url}')
 
     # make md5 hash of the url for caching...
-    filename = '%s.xml' % hashlib.md5(url.encode('utf8')).hexdigest()
+    filename = f"{hashlib.md5(url.encode('utf8')).hexdigest()}.xml"
     if isinstance(cache, basestring):
         filename = os.path.join(cache, filename)
     if cache and os.path.exists(filename) and not force_download:
-        log.info('Reading file %s' % filename)
-        f = open(filename, 'r')
-        xml = f.read()
-        f.close()
+        log.info(f'Reading file {filename}')
+        with open(filename, 'r') as f:
+            xml = f.read()
     else:
         if url_scheme == 'file':
-            log.info('Fetching url %s using urllib2' % url)
+            log.info(f'Fetching url {url} using urllib2')
             f = urllib2.urlopen(url)
             xml = f.read()
         else:
-            log.info('GET %s using %s' % (url, http._wrapper_version))
+            log.info(f'GET {url} using {http._wrapper_version}')
             response, xml = http.request(url, 'GET', None, headers)
         if cache:
-            log.info('Writing file %s' % filename)
+            log.info(f'Writing file {filename}')
             if not os.path.isdir(cache):
                 os.makedirs(cache)
-            f = open(filename, 'w')
-            f.write(xml)
-            f.close()
+            with open(filename, 'w') as f:
+                f.write(xml)
     return xml
 
 
 def sort_dict(od, d):
     """Sort parameters (same order as xsd:sequence)"""
-    if isinstance(od, dict):
-        ret = Struct()
-        for k in od.keys():
-            v = d.get(k)
-            # don't append null tags!
-            if v is not None:
-                if isinstance(v, dict):
-                    v = sort_dict(od[k], v)
-                elif isinstance(v, list):
-                    v = [sort_dict(od[k][0], v1) for v1 in v]
-                ret[k] = v
-        if hasattr(od, 'namespaces'):
-            ret.namespaces.update(od.namespaces)
-            ret.references.update(od.references)
-            ret.qualified = od.qualified
-        return ret
-    else:
+    if not isinstance(od, dict):
         return d
+    ret = Struct()
+    for k in od.keys():
+        v = d.get(k)
+        # don't append null tags!
+        if v is not None:
+            if isinstance(v, dict):
+                v = sort_dict(od[k], v)
+            elif isinstance(v, list):
+                v = [sort_dict(od[k][0], v1) for v1 in v]
+            ret[k] = v
+    if hasattr(od, 'namespaces'):
+        ret.namespaces.update(od.namespaces)
+        ret.references.update(od.references)
+        ret.qualified = od.qualified
+    return ret
 
 
 def make_key(element_name, element_type, namespace):
@@ -114,7 +111,7 @@ def make_key(element_name, element_type, namespace):
     else:
         eltype = element_type
     if eltype not in ('element', 'complexType', 'simpleType'):
-        raise RuntimeError("Unknown element type %s = %s" % (element_name, eltype))
+        raise RuntimeError(f"Unknown element type {element_name} = {eltype}")
     return (element_name, eltype, namespace)
 
 

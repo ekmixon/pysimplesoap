@@ -13,7 +13,7 @@ PY2 = sys.version < '3'
 class TestSimpleXMLElement(unittest.TestCase):
     def eq(self, value, expectation, msg=None):
         if msg is not None:
-            msg += ' %s' % value
+            msg += f' {value}'
             self.assertEqual(value, expectation, msg)
         else:
             self.assertEqual(value, expectation, value)
@@ -177,7 +177,7 @@ class TestSimpleXMLElement(unittest.TestCase):
         span1.b = "ex msn"
         d = {'href': 'http://www.bing.com/', 'alt': 'Bing'}
         span1.b[:] = d
-        self.eq(sorted([(k, v) for k, v in span1.b[:]]), sorted(d.items()))
+        self.eq(sorted(list(span1.b[:])), sorted(d.items()))
 
         xml = (
             '<?xml version="1.0" encoding="UTF-8"?><span>'
@@ -199,7 +199,7 @@ class TestSimpleXMLElement(unittest.TestCase):
 
         types = {'when': datetime.datetime}
         when = datetime.datetime.now()
-        dt = SimpleXMLElement('<when>%s</when>' % when.isoformat())
+        dt = SimpleXMLElement(f'<when>{when.isoformat()}</when>')
         self.eq(dt.unmarshall(types)['when'], when)
 
     def test_repr(self):
